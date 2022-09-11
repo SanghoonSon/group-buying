@@ -1,0 +1,93 @@
+version: '3.9'
+services:
+  rabbitmq:
+    image: rabbitmq:3.9.22-management-alpine
+    container_name: rabbitmq
+    volumes:
+      - ~/dev/docker/volume/rabbitmq/etc/:/etc/rabbitmq/
+      - ~/dev/docker/volume/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/dev/docker/volume/rabbitmq/logs/:/var/log/rabbitmq/
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "RabbitMQ-My-Cookies"
+      RABBITMQ_DEFAULT_USER: "admin"
+      RABBITMQ_DEFAULT_PASS: "admin"
+      RABBITMQ_DEFAULT_VHOST: /
+
+  zookeeper:
+    container_name: zookeeper
+    image: wurstmeister/zookeeper
+    ports: #주키퍼,카프카 포트는 알아두자
+      - "2181:2181"
+    restart: always
+
+  kafka:
+    container_name: kafka
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    restart: always
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.219.102
+      #카프카 토픽 생성
+      KAFKA_CREATE_TOPICS: "commerce_user:1:1,commerce_order:1:1,commerce_product:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - ~/dev/docker/volume/docker/volume.sock:/var/run/docker/volume.sock
+    depends_on:
+      - zookeeper
+
+  userDatabase:
+    image: mariadb
+    container_name: userDatabase
+    ports:
+      - 3380:3306
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: userdb
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: qwer1234
+    volumes:
+      - ~/dev/docker/volume/userDatabase:/var/lib/mysql
+
+  userRedis:
+    image: redis:latest
+    container_name: userRedis
+    hostname: userRedis
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - ~/dev/docker/volume/userRedis/data:/data
+      - ~/dev/docker/volume/userRedis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  discovery-server:
+    build: ./discovery
+    ports:
+      - "8761:8761"
+    volumes:
+      - ~/dev/docker/volume/discovery:/usr/src/app
+
+  config-server:
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8888:8888"
+    build: ./config
+    volumes:
+      - ~/dev/docker/volume/config:/usr/src/app
+
+  api-gateway-server:
+    depends_on:
+      - config-server
+      - discovery-server
+    ports:
+      - "8000:8000"
+    build: ./api-gateway
+    volumes:
+      - ~/dev/docker/volume/api-gateway:/usr/src/app

@@ -8,26 +8,23 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/SanghoonSon/group-buying.git
+          uri: https://github.com/SanghoonSon/group-buying
+#  rabbitmq:
+#    host: localhost
+#    port: 5672
+#    username: admin
+#    password: admin
+#
 
-  rabbitmq:
-    host: 127.0.0.1
-    port: 5672
-    username: admin
-    password: rabbitpassword
-
+# actuator 기본 설정
 management:
   endpoints:
     web:
       exposure:
-        include: '*'
+        include: "*"
   endpoint:
-    health:
-      show-details: always
-
-logging:
-  level:
-    root: info
+    shutdown:
+      enabled: true
 
 encrypt:
   key: asdkfjaksdfjksd12341232
