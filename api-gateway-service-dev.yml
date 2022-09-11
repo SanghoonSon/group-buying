@@ -1,0 +1,50 @@
+server:
+  port: 8000
+
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - name: GlobalFilter
+          args:
+            preLogger: true
+            postLogger: true
+
+      routes:
+        - id: auth-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/oauth2/**, /api/v1/auth/**
+          filters:
+            - RewritePath=/api/v1/(?<path>.*), /$\{path}
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/api/v1/users/(?<path>.*), /$\{path}
+            - AuthorizationHeaderFilter
+
+service:
+  details:
+    - id: view-service
+      uri: http://localhost:3000
+    - id: user-service
+      uri: lb://USER-SERVICE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway
+
+token:
+  secret: user_token
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://127.0.0.1:8761/eureka
